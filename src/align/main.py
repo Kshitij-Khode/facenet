@@ -25,40 +25,27 @@
 import sys, os, queue, time, threading, random
 import cv2, facenet, align.detect_face
 
-from scipy import misc
+from scipy         import misc
+from etc.ui.render import Renderer
+from etc.ui.render import FACESTATE
 
 import tensorflow as tf
 import numpy      as np
 import skimage.transform as sktransform
 
 
-# def getFrameLoop(videoCap, frameBuffer):
-#     while True:
-#         _, frame = videoCap.read()
-#         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-#         frameBuffer.put(frame)
-
-
-# def useFrameLoop(frameBuffer):
-#     while True:
-#         frame = frameBuffer.get()
-#         frameBuffer.task_done()
-
-def oneLoop(pnet, rnet, onet):
+def oneLoop(pnet, rnet, onet, renderer):
     minsize, threshold, factor = 20, [ 0.6, 0.7, 0.7 ], 0.709
     videoCap = cv2.VideoCapture(0)
 
     while True:
         _, frame = videoCap.read()
-        frame    = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         bounding_boxes, _ = align.detect_face.detect_face(frame, minsize, pnet, rnet, onet, threshold, factor)
-        alignBoxes(bounding_boxes, frame)
-        time.sleep(2)
 
-def alignBoxes(boundingBoxes, frame):
+        # cropBoxes(bounding_boxes, frame)
+        renderer.renderBoxes(bounding_boxes, FACESTATE.DETECTED, frame)
 
-    print('alignBoxes called.')
-
+def cropBoxes(boundingBoxes, frame):
     nrof_faces = boundingBoxes.shape[0]
 
     if nrof_faces > 0:
@@ -95,8 +82,28 @@ def main():
         sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
         with sess.as_default(): pnet, rnet, onet = align.detect_face.create_mtcnn(sess, None)
 
-    oneLoop(pnet, rnet, onet)
+    renderer = Renderer()
 
+    oneLoop(pnet, rnet, onet, renderer)
+
+
+if __name__ == '__main__':
+    main()
+
+
+# def getFrameLoop(videoCap, frameBuffer):
+#     while True:
+#         _, frame = videoCap.read()
+#         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         frameBuffer.put(frame)
+
+
+# def useFrameLoop(frameBuffer):
+#     while True:
+#         frame = frameBuffer.get()
+#         frameBuffer.task_done()
+
+# def main():
 #     getFrameThreadCount = 1
 #     useFrameThreadCount = 5
 #     getFrameThreads     = []
@@ -125,6 +132,3 @@ def main():
 
 #     for thread in useFrameThreads:
 #         thread.join()
-
-if __name__ == '__main__':
-    main()
